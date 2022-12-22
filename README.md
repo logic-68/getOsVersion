@@ -3,7 +3,7 @@
 Get your Os version FreeBSD PS5
 
 # Credits
-- [@notzecoxao](https://twitter.com/notzecoxao)
+- [@notzecoxao](https://github.com/zecoxao/)
 - [@astrelsky](https://github.com/astrelsky)
 
 # required
