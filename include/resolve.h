@@ -33,7 +33,6 @@ void (*f_sceNetCtlTerm)(void);
 int (*f_sceNetCtlGetInfo)(int code, SceNetCtlInfo *info);
 int *sceNetErrnoLoc(void);
 
-
 typeof(sceKernelLoadStartModule)* f_sceKernelLoadStartModule;
 typeof(sceKernelDebugOutText)* f_sceKernelDebugOutText;
 typeof(sceKernelUsleep)* f_sceKernelUsleep;
@@ -46,8 +45,16 @@ typeof(scePthreadMutexInit)* f_scePthreadMutexInit;
 typeof(scePthreadCreate)* f_scePthreadCreate;
 typeof(scePthreadMutexDestroy)* f_scePthreadMutexDestroy;
 typeof(scePthreadJoin)* f_scePthreadJoin;
+typeof(sysctlbyname)* f_sysctlbyname;
+typeof(sceKernelGetFsSandboxRandomWord)* f_sceKernelGetFsSandboxRandomWord;
+
+typeof(sceKernelGetCpuTemperature)* f_sceKernelGetCpuTemperature;
+typeof(sceKernelGetSocSensorTemperature)* f_sceKernelGetSocSensorTemperature;
+typeof(sceKernelGetCpuFrequency)* f_sceKernelGetCpuFrequency;
+typeof(sceKernelGetHwSerialNumber)* f_sceKernelGetHwSerialNumber;
+
 typeof(sceKernelReboot)* f_sceKernelReboot;
-typeof(*sysctlbyname)* f_sysctlbyname;
+
 typeof(socket)* f_socket;
 typeof(bind)* f_bind;
 typeof(listen)* f_listen;
@@ -120,19 +127,28 @@ typeof(fread) * f_fread;
 typeof(usleep) * f_usleep;
 typeof(fputs) * f_fputs;
 typeof(fgetc) * f_fgetc;
+typeof(fgets) * f_fgets;
 typeof(feof) * f_feof;
 typeof(fprintf) * f_fprintf;
 typeof(realloc) * f_realloc;
 typeof(seekdir) * f_seekdir;
+typeof(strtok) * f_strtok;
+typeof(strtol) * f_strtol;
+typeof(atoi) * f_atoi;
+typeof(atof) * f_atof;
+typeof(atol) * f_atol;
+typeof(isspace) * f_isspace;
+typeof(ferror) * f_ferror;
+typeof(strdup) * f_strdup;
 
 typeof(sceSysmoduleLoadModuleInternal) * f_sceSysmoduleLoadModuleInternal;
+typeof(sceSysmoduleUnloadModuleInternal) * f_sceSysmoduleUnloadModuleInternal;
 
 typeof(sceUserServiceInitialize) * f_sceUserServiceInitialize;
 typeof(sceUserServiceGetInitialUser) * f_sceUserServiceGetInitialUser;
 typeof(sceUserServiceGetLoginUserIdList) * f_sceUserServiceGetLoginUserIdList;
 typeof(sceUserServiceGetUserName) * f_sceUserServiceGetUserName;
 typeof(sceUserServiceTerminate) * f_sceUserServiceTerminate;
-
 #define sce_net_errno (*f_sceNetErrnoLoc())
 
 #define IP(a, b, c, d) (((a) << 0) + ((b) << 8) + ((c) << 16) + ((d) << 24))

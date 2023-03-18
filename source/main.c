@@ -1,48 +1,133 @@
-#include <resolve.h>
-#include <debug.h>
+#include <utils.h>
 
+#define VERSION "1.0.1"
+#define NAME_APP "GetOsVersion"
 #define DEBUG_SOCKET
 #define DEBUG_ADDR IP(192, 168, 1, 155);
 #define DEBUG_PORT 5655
 
+int sock, nthread_run, display_temp;
 
-// https://github.com/OSM-Made/PS4-Notify
-void printf_notification(const char *fmt, ...)
+
+void *nthread_func(void *args)
 {
-	SceNotificationRequest noti_buffer;
+	PROCESS *process = args;
+	time_t t1, t2;
+	t1 = 0;
+	while (nthread_run)
+	{
+		if (display_temp)
+		{
+			t2 = f_time(NULL);
+			if ((t2 - t1) >= 20)
+			{
+				t1 = t2;
+				printf_notification("Temp CPU:%i°C %iMhz SOC:%i°C\n", process->cpu, process->frequency, process->soc);
+				display_temp = 0;
+			}
+		}
+		else 
+		{
+			display_temp = 1;
+			t1 = 0;
+		}	
+		f_sceKernelSleep(7);
+	}
 
-	va_list args;
-	va_start(args, fmt);
-	f_vsprintf(noti_buffer.message, fmt, args);
-	va_end(args);
-
-	noti_buffer.type = 0;
-	noti_buffer.unk3 = 0;
-	noti_buffer.use_icon_image_uri = 1;
-	noti_buffer.target_id = -1;
-	f_strcpy(noti_buffer.uri, "cxml://psnotification/tex_icon_system");
-
-	f_sceKernelSendNotificationRequest(0, (SceNotificationRequest *)&noti_buffer, sizeof(noti_buffer), 0);
+	return NULL;
+}
+/*************************************************DISPLAY******************************************************/
+void displayFreeBSD(KERNEL kernel, MANUFACTURE manufacture)
+{
+	printfsocket("%s %s %i %s %i\n", kernel.ostype, kernel.revision, manufacture.day, manufacture.month, manufacture.year);
 }
 
-
-int sock;
-
-char *getOSVersion()
+void displayHw(HW hw)
 {
-	char *retval = f_malloc(256);
-	char value[256] = {};
-	size_t size = 256;
-	int ret = f_sysctlbyname("kern.version", value, &size, NULL, 0);
-	if (!ret)
-	{
-		f_strcpy(retval, value);
-		return retval;
-	} else {
-		return NULL;
+	printfsocket("%s Model: %s\n", hw.machine, hw.model);
+}
+void infosSdk(KERNEL kernel)
+{
+	printfsocket("\nkern.ps4_sdk_version: 0x%zx\nkernel.sdk_version: 0x%zx\nmachdep.upd_version: 0x%zx", kernel.ps4_sdk_version, kernel.sdk_version, kernel.upd_version);
+}
+void infoCpuMode(KERNEL kernel)
+{
+	printfsocket("\nCpu Mode:%i Cpu Mode Game:%i\n", kernel.cpumode, kernel.cpumodegame);
+}
+void infosOs(OS os)
+{
+	printfsocket("\nPS4 SDK:%g FW:%g UPD:%g\n", os.ps4_sdk_version, os.sdk_version, os.upd_version);
+}
+void infosTemp(PROCESS process)
+{
+	printfsocket("\nCPU:%iC / %iMhz SOC:%iC\n", process.cpu, process.frequency, process.soc);
+}
+
+void displaySystem(SYSTEM system)
+{
+	HW *hw;
+	hw = system.h;
+
+	KERNEL *kernel;
+	kernel = system.k;
+
+	MANUFACTURE *manufacture;
+	manufacture = system.m;
+
+	OS *os;
+	os = system.o;
+
+	PROCESS *process;
+	process = system.p;
+
+	displayFreeBSD(*kernel, *manufacture);
+	displayHw(*hw);	
+	infosOs(*os);
+	infoCpuMode(*kernel);
+	infosSdk(*kernel);
+	infosTemp(*process);
+
+	printf_notification("%s %s %i %s %i", kernel->ostype, kernel->revision, manufacture->day, manufacture->month, manufacture->year);
+	f_sceKernelSleep(7);
+
+	printf_notification("%s Model: %s\n", hw->machine, hw->model);
+	f_sceKernelSleep(7);
+
+	printf_notification("PS4 SDK:%g FW:%g UPD:%g\nCpu Mode:%i Cpu Mode Game:%i", os->ps4_sdk_version, os->sdk_version, os->upd_version, kernel->cpumode, kernel->cpumodegame);
+	f_sceKernelSleep(7);
+	
+	ScePthread nthread;
+	if(f_scePthreadCreate(&nthread, NULL, nthread_func, process, "nthread")){
+		f_free(process);
 	}
 }
+void selectSystem(SYSTEM *system)
+{
+	HW *hw = (HW *)f_malloc(sizeof(HW));
+	system->h = hw;
+	getHw(hw);
 
+	KERNEL *kernel = (KERNEL *)f_malloc(sizeof(KERNEL));
+	system->k = kernel;
+	getKernel(kernel);
+	cpuMode(kernel);
+
+	char version[256];
+	f_strcpy(version, kernel->version);	
+	formatRevision(kernel); 
+
+	MANUFACTURE *manufacture = (MANUFACTURE *)f_malloc(sizeof(MANUFACTURE));
+	system->m = manufacture;
+	formatDate(manufacture, version);
+
+	OS *os = (OS *)f_malloc(sizeof(OS));
+	system-> o= os;
+	getOs(kernel, os);
+
+	PROCESS *process = (PROCESS *)f_malloc(sizeof(PROCESS));
+	system->p = process;
+	getProcessTempFrequency(process);
+}
 int payload_main(struct payload_args *args)
 {
 	dlsym_t *dlsym = args->dlsym;
@@ -61,9 +146,14 @@ int payload_main(struct payload_args *args)
 	dlsym(libKernel, "scePthreadCreate", &f_scePthreadCreate);
 	dlsym(libKernel, "scePthreadMutexDestroy", &f_scePthreadMutexDestroy);
 	dlsym(libKernel, "scePthreadJoin", &f_scePthreadJoin);
+	dlsym(libKernel, "sceKernelGetFsSandboxRandomWord", &f_sceKernelGetFsSandboxRandomWord);
+
+	dlsym(libKernel, "sceKernelGetCpuTemperature", &f_sceKernelGetCpuTemperature);
+	dlsym(libKernel, "sceKernelGetSocSensorTemperature", &f_sceKernelGetSocSensorTemperature);
+	dlsym(libKernel, "sceKernelGetHwSerialNumber", &f_sceKernelGetHwSerialNumber);
+	dlsym(libKernel, "sceKernelGetCpuFrequency", &f_sceKernelGetCpuFrequency);
 
 	dlsym(libKernel, "sysctlbyname", &f_sysctlbyname);
-
 	dlsym(libKernel, "socket", &f_socket);
 	dlsym(libKernel, "bind", &f_bind);
 	dlsym(libKernel, "listen", &f_listen);
@@ -84,7 +174,6 @@ int payload_main(struct payload_args *args)
 	dlsym(libKernel, "puts", &f_puts);
 	dlsym(libKernel, "mmap", &f_mmap);
 	dlsym(libKernel, "munmap", &f_munmap);
-
 	dlsym(libKernel, "sceKernelReboot", &f_sceKernelReboot);
 
 	int libNet = f_sceKernelLoadStartModule("libSceNet.sprx", 0, 0, 0, 0, 0);
@@ -140,10 +229,19 @@ int payload_main(struct payload_args *args)
 	dlsym(libC, "usleep", &f_usleep);
 	dlsym(libC, "fputs", &f_fputs);
 	dlsym(libC, "fgetc", &f_fgetc);
+	dlsym(libC, "fgets", &f_fgets);
 	dlsym(libC, "feof", &f_feof);
 	dlsym(libC, "fprintf", &f_fprintf);
 	dlsym(libC, "realloc", &f_realloc);
 	dlsym(libC, "seekdir", &f_seekdir);
+	dlsym(libC, "strtok", &f_strtok);
+	dlsym(libC, "strtol", &f_strtol);
+	dlsym(libC, "atoi", &f_atoi);
+	dlsym(libC, "atof", &f_atof);
+	dlsym(libC, "atol", &f_atol);
+	dlsym(libC, "isspace", &f_isspace);
+	dlsym(libC, "ferror", &f_ferror);
+	dlsym(libC, "strdup", &f_strdup);
 
 	int libNetCtl = f_sceKernelLoadStartModule("libSceNetCtl.sprx", 0, 0, 0, 0, 0);
 	dlsym(libNetCtl, "sceNetCtlInit", &f_sceNetCtlInit);
@@ -152,6 +250,9 @@ int payload_main(struct payload_args *args)
 
 	int libSysModule = f_sceKernelLoadStartModule("libSceSysmodule.sprx", 0, 0, 0, 0, 0);
 	dlsym(libSysModule, "sceSysmoduleLoadModuleInternal", &f_sceSysmoduleLoadModuleInternal);
+	dlsym(libSysModule, "sceSysmoduleUnloadModuleInternal", &f_sceSysmoduleUnloadModuleInternal);
+
+	int sysModule = f_sceSysmoduleLoadModuleInternal(SCE_SYSMODULE_INTERNAL_USER_SERVICE);
 
 	int libUserService = f_sceKernelLoadStartModule("libSceUserService.sprx", 0, 0, 0, 0, 0);
 	dlsym(libUserService, "sceUserServiceInitialize", &f_sceUserServiceInitialize);
@@ -169,12 +270,22 @@ int payload_main(struct payload_args *args)
 	sock = f_sceNetSocket("debug", AF_INET, SOCK_STREAM, 0);
 	f_sceNetConnect(sock, (struct sockaddr *)&server, sizeof(server));
 
-	char release[256];
-	char *get_os_release = getOSVersion();
-	f_strcpy(release, get_os_release);
-	f_free(get_os_release);
+	nthread_run = 1;
+	display_temp = 1;
 
-	printf_notification("%s", release);
+	char *userName;
+	int32_t userId;
 
+	if (sysModule == 0)
+	{
+		get_User_Name(&userName, &userId);
+		printf_notification("Welcome %s to:\n%s V%s\n\n by ★Logic-68★", userName, NAME_APP, VERSION);
+		f_sceKernelSleep(7);
+	}
+	sysModule = f_sceSysmoduleUnloadModuleInternal(SCE_SYSMODULE_INTERNAL_USER_SERVICE);
+	//////////////////////////////////////////////////////////////////////////////////////
+	SYSTEM system;
+	selectSystem(&system);
+	displaySystem(system);
 	return 0;
 }
