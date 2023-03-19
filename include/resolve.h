@@ -48,13 +48,11 @@ typeof(scePthreadJoin)* f_scePthreadJoin;
 typeof(sysctlbyname)* f_sysctlbyname;
 typeof(sceKernelGetFsSandboxRandomWord)* f_sceKernelGetFsSandboxRandomWord;
 
+//typeof(sceKernelGetHwModelName)* f_sceKernelGetHwModelName;
+//typeof(sceKernelGetHwSerialNumber)* f_sceKernelGetHwSerialNumber;
 typeof(sceKernelGetCpuTemperature)* f_sceKernelGetCpuTemperature;
 typeof(sceKernelGetSocSensorTemperature)* f_sceKernelGetSocSensorTemperature;
 typeof(sceKernelGetCpuFrequency)* f_sceKernelGetCpuFrequency;
-typeof(sceKernelGetHwSerialNumber)* f_sceKernelGetHwSerialNumber;
-
-typeof(sceKernelReboot)* f_sceKernelReboot;
-
 typeof(socket)* f_socket;
 typeof(bind)* f_bind;
 typeof(listen)* f_listen;
@@ -75,6 +73,7 @@ typeof(lseek) * f_lseek;
 typeof(puts) * f_puts;
 typeof(mmap) * f_mmap;
 typeof(munmap) * f_munmap;
+typeof(sceKernelReboot)* f_sceKernelReboot;
 
 typeof(sceNetSocket) * f_sceNetSocket;
 typeof(sceNetConnect) * f_sceNetConnect;

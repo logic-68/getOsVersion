@@ -31,11 +31,11 @@ void getHw(HW *hw)
     size_t olden;
     olden = sizeof(hw->machine);
     f_sysctlbyname("hw.machine", (char *)&hw->machine, &olden, NULL, 0);
-
+    
     olden = sizeof(hw->model);
-    f_sysctlbyname("hw.model", (char *)&hw->model, &olden, NULL, 0);
+    f_sysctlbyname("hw.model", (char*)&hw->model, &olden, NULL, 0);
 }
-void cpuMode(KERNEL *kernel)
+void getCpuMode(KERNEL *kernel)
 {
     size_t olden;
     olden = sizeof(kernel->cpumode);
@@ -103,4 +103,12 @@ double formatFw(uint32_t str)
     f_snprintf(buf, 0x6, "%2x.%03x", str >> 0x18, str >> 0xc & 0xfff);
 	f_sscanf(buf, "%lg", &fw);
     return fw;
+}
+void freeStruct(KERNEL *kernel, MANUFACTURE *manufacture, HW *hw, OS *os, PROCESS *process)
+{
+    f_free(kernel);
+    f_free(manufacture);
+    f_free(hw);
+    f_free(os);
+    f_free(process);
 }

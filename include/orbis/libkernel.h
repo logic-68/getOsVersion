@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include <stdio.h>
+
 #include <stdint.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -187,13 +189,13 @@ extern "C"
 	int sceKernelSendNotificationRequest(int device, SceNotificationRequest *req, size_t size, int blocking);
 	int sysctlbyname(const char *name, void *oldp, size_t *oldlenp, const void *newp, size_t newlen);
 
-	void sceKernelReboot();
-
-	int sceKernelGetHwSerialNumber(char *str);
+	//int sceKernelGetHwModelName(char *str);
+	//int sceKernelGetHwSerialNumber(char *str);
 	int sceKernelGetCpuTemperature(int *cpu);
 	int sceKernelGetSocSensorTemperature(int v, int *soc);
 	int sceKernelGetCpuFrequency();
 
+	void sceKernelReboot();
 #ifdef __cplusplus
 }
 #endif

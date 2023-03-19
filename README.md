@@ -1,4 +1,8 @@
 # getOsVersion
+v1.0.2 
+- Slight modification to the temperature loop.
+- release memory after display
+- Fixed memory space for Model hw
 
 v1.0.1
 - simple display of information
@@ -7,7 +11,6 @@ v1.0.1
 - machine, model
 - Firmware ps4_sdk, sdk, upd
 - Loop temperatur and frenquancy 
-
 
 # Credits
 - [PS5Dev](https://github.com/PS5Dev) 

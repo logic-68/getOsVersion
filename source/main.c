@@ -1,6 +1,6 @@
 #include <utils.h>
 
-#define VERSION "1.0.1"
+#define VERSION "1.0.2"
 #define NAME_APP "GetOsVersion"
 #define DEBUG_SOCKET
 #define DEBUG_ADDR IP(192, 168, 1, 155);
@@ -18,31 +18,33 @@ void *nthread_func(void *args)
 	{
 		if (display_temp)
 		{
+			getProcessTempFrequency(process);
+			printfsocket("Temp CPU:%iC %iMhz SOC:%iC\n", process->cpu, process->frequency, process->soc);
+
 			t2 = f_time(NULL);
-			if ((t2 - t1) >= 20)
+			if ((t2 - t1) >= 7)
 			{
 				t1 = t2;
 				printf_notification("Temp CPU:%i°C %iMhz SOC:%i°C\n", process->cpu, process->frequency, process->soc);
 				display_temp = 0;
 			}
 		}
-		else 
+		else
 		{
 			display_temp = 1;
 			t1 = 0;
-		}	
+		}
 		f_sceKernelSleep(7);
 	}
 
 	return NULL;
 }
 /*************************************************DISPLAY******************************************************/
-void displayFreeBSD(KERNEL kernel, MANUFACTURE manufacture)
+void infosFreeBSD(KERNEL kernel, MANUFACTURE manufacture)
 {
-	printfsocket("%s %s %i %s %i\n", kernel.ostype, kernel.revision, manufacture.day, manufacture.month, manufacture.year);
+	printfsocket("\n%s %s %i %s %i\n", kernel.ostype, kernel.revision, manufacture.day, manufacture.month, manufacture.year);
 }
-
-void displayHw(HW hw)
+void infosHw(HW hw)
 {
 	printfsocket("%s Model: %s\n", hw.machine, hw.model);
 }
@@ -65,14 +67,14 @@ void infosTemp(PROCESS process)
 
 void displaySystem(SYSTEM system)
 {
-	HW *hw;
-	hw = system.h;
-
 	KERNEL *kernel;
 	kernel = system.k;
 
 	MANUFACTURE *manufacture;
 	manufacture = system.m;
+
+	HW *hw;
+	hw = system.h;
 
 	OS *os;
 	os = system.o;
@@ -80,8 +82,8 @@ void displaySystem(SYSTEM system)
 	PROCESS *process;
 	process = system.p;
 
-	displayFreeBSD(*kernel, *manufacture);
-	displayHw(*hw);	
+	infosFreeBSD(*kernel, *manufacture);
+	infosHw(*hw);
 	infosOs(*os);
 	infoCpuMode(*kernel);
 	infosSdk(*kernel);
@@ -90,38 +92,42 @@ void displaySystem(SYSTEM system)
 	printf_notification("%s %s %i %s %i", kernel->ostype, kernel->revision, manufacture->day, manufacture->month, manufacture->year);
 	f_sceKernelSleep(7);
 
+
 	printf_notification("%s Model: %s\n", hw->machine, hw->model);
+
+	
 	f_sceKernelSleep(7);
 
 	printf_notification("PS4 SDK:%g FW:%g UPD:%g\nCpu Mode:%i Cpu Mode Game:%i", os->ps4_sdk_version, os->sdk_version, os->upd_version, kernel->cpumode, kernel->cpumodegame);
 	f_sceKernelSleep(7);
-	
+
 	ScePthread nthread;
-	if(f_scePthreadCreate(&nthread, NULL, nthread_func, process, "nthread")){
-		f_free(process);
+	if (f_scePthreadCreate(&nthread, NULL, nthread_func, process, "nthread"))
+	{
+		freeStruct(kernel, manufacture, hw, os, process);
 	}
 }
 void selectSystem(SYSTEM *system)
 {
-	HW *hw = (HW *)f_malloc(sizeof(HW));
-	system->h = hw;
-	getHw(hw);
-
 	KERNEL *kernel = (KERNEL *)f_malloc(sizeof(KERNEL));
 	system->k = kernel;
 	getKernel(kernel);
-	cpuMode(kernel);
+	getCpuMode(kernel);
 
+	HW *hw = (HW *)f_malloc(sizeof(HW));
+	system->h = hw;
+	getHw(hw);
+	
 	char version[256];
-	f_strcpy(version, kernel->version);	
-	formatRevision(kernel); 
+	f_strcpy(version, kernel->version);
+	formatRevision(kernel);
 
 	MANUFACTURE *manufacture = (MANUFACTURE *)f_malloc(sizeof(MANUFACTURE));
 	system->m = manufacture;
 	formatDate(manufacture, version);
 
 	OS *os = (OS *)f_malloc(sizeof(OS));
-	system-> o= os;
+	system->o = os;
 	getOs(kernel, os);
 
 	PROCESS *process = (PROCESS *)f_malloc(sizeof(PROCESS));
@@ -147,12 +153,11 @@ int payload_main(struct payload_args *args)
 	dlsym(libKernel, "scePthreadMutexDestroy", &f_scePthreadMutexDestroy);
 	dlsym(libKernel, "scePthreadJoin", &f_scePthreadJoin);
 	dlsym(libKernel, "sceKernelGetFsSandboxRandomWord", &f_sceKernelGetFsSandboxRandomWord);
-
+	// dlsym(libKernel, "sceKernelGetHwModelName", &f_sceKernelGetHwModelName); libKernel_sys
+	// dlsym(libKernel, "sceKernelGetHwSerialNumber", &f_sceKernelGetHwSerialNumber);libKernel_sys
 	dlsym(libKernel, "sceKernelGetCpuTemperature", &f_sceKernelGetCpuTemperature);
 	dlsym(libKernel, "sceKernelGetSocSensorTemperature", &f_sceKernelGetSocSensorTemperature);
-	dlsym(libKernel, "sceKernelGetHwSerialNumber", &f_sceKernelGetHwSerialNumber);
 	dlsym(libKernel, "sceKernelGetCpuFrequency", &f_sceKernelGetCpuFrequency);
-
 	dlsym(libKernel, "sysctlbyname", &f_sysctlbyname);
 	dlsym(libKernel, "socket", &f_socket);
 	dlsym(libKernel, "bind", &f_bind);
@@ -272,7 +277,6 @@ int payload_main(struct payload_args *args)
 
 	nthread_run = 1;
 	display_temp = 1;
-
 	char *userName;
 	int32_t userId;
 
