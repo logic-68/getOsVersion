@@ -7,7 +7,7 @@ LIBPS5   := include/libPS5/source
 ORBISDIR := include/orbis/source
 IDIRS    := -I. -Iinclude
 LDIRS    := -L. -Llib
-CFLAGS   := $(IDIRS) -fno-builtin -nostdlib -Wall -m64 -fPIC -mcmodel=small
+CFLAGS   := $(IDIRS) -fno-builtin -nostdlib -Wall -m64 -fPIC -mcmodel=small -fcommon
 SFLAGS   := -fno-builtin -nostartfiles -nostdlib -fPIC -mcmodel=small
 LFLAGS   := $(LDIRS) -Xlinker -T linker.x -Wl,--build-id=none
 CFILES   := $(wildcard $(SDIR)/*.c) $(wildcard $(LIBPS4)/*.c) $(wildcard $(LIBPS5)/*.c) $(wildcard $(ORBISDIR)/*.c)
